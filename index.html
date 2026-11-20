@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Три коробки — Кинематографичная видео-новелла</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#050505;
+    --text:#ffffff;
+    --text-soft:rgba(255,255,255,0.7);
+    --muted:rgba(255,255,255,0.4);
+    
+    --cheap:#a3a3a3;
+    --cheap-glow:rgba(163,163,163,0.3);
+    --mid:#38bdf8;
+    --mid-glow:rgba(56,189,248,0.4);
+    --rich:#fbbf24;
+    --rich-glow:rgba(251,191,36,0.4);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#000;}
+  body{
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    -webkit-font-smoothing:antialiased;
+    perspective:1000px;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+
+  /* ================= ТОНКИЙ ПРОГРЕСС-БАР СВЕРХУ ================= */
+  .top-progress {
+    position:fixed;
+    top:0; left:0; right:0;
+    height:3px;
+    z-index:200;
+    background:rgba(255,255,255,0.1);
+  }
+  .top-progress-fill {
+    height:100%;
+    width:0;
+    background:linear-gradient(90deg, var(--cheap), var(--mid), var(--rich));
+    transition:width 0.1s linear;
+  }
+
+  /* ================= ЗОНЫ КЛИКОВ ================= */
+  .click-zones {
+    position:fixed;
+    inset:0;
+    z-index:150;
+    display:flex;
+  }
+  .click-zone {
+    height:100%;
+  }
+  .zone-left { width:30%; }
+  .zone-center { width:40%; }
+  .zone-right { width:30%; }
+
+  /* Визуальный фидбек при клике */
+  .feedback {
+    position:fixed;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%) scale(0.5);
+    width:80px; height:80px;
+    background:rgba(0,0,0,0.6);
+    backdrop-filter:blur(4px);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    opacity:0;
+    pointer-events:none;
+    z-index:160;
+    transition:opacity 0.3s, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .feedback.show {
+    opacity:1;
+    transform:translate(-50%, -50%) scale(1);
+  }
+  .feedback svg {
+    width:32px; height:32px;
+    fill:#fff;
+  }
+
+  /* ================= ФОН ================= */
+  .bg-layer {
+    position:fixed;
+    inset:-10%;
+    z-index:0;
+    background: var(--bg);
+    transition: background 1.5s ease;
+  }
+  .bg-orb {
+    position:absolute;
+    border-radius:50%;
+    filter:blur(100px);
+    opacity:0.5;
+    transition: all 1.5s ease;
+    mix-blend-mode: screen;
+  }
+  .orb-1 { width:60vw; height:60vw; top:-20%; left:-10%; background:#000; }
+  .orb-2 { width:50vw; height:50vw; bottom:-20%; right:-10%; background:#000; }
+  .orb-3 { width:40vw; height:40vw; top:40%; left:40%; background:#000; }
+
+  body.theme-cheap .orb-1 { background:#1a1a1a; }
+  body.theme-cheap .orb-2 { background:#2d2d2d; }
+  body.theme-cheap .orb-3 { background:#111; }
+  
+  body.theme-mid .orb-1 { background:#0284c7; }
+  body.theme-mid .orb-2 { background:#1e3a8a; }
+  body.theme-mid .orb-3 { background:#0ea5e9; }
+  
+  body.theme-rich .orb-1 { background:#b45309; }
+  body.theme-rich .orb-2 { background:#78350f; }
+  body.theme-rich .orb-3 { background:#f59e0b; }
+
+  /* ================= СЦЕНЫ ================= */
+  .scene {
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:10;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 1s ease, transform 1s ease;
+    transform:scale(1.05);
+  }
+  .scene.active {
+    opacity:1;
+    pointer-events:auto;
+    transform:scale(1);
+  }
+
+  /* Заголовок */
+  .title-scene {
+    flex-direction:column;
+    text-align:center;
+    padding:2rem;
+  }
+  .title-scene .kicker {
+    font-size:0.8rem; font-weight:600; letter-spacing:0.4em;
+    text-transform:uppercase; color:var(--text-soft);
+    margin-bottom:2rem;
+    opacity:0; transform:translateY(20px); transition:all 0.8s ease 0.2s;
+  }
+  .title-scene h1 {
+    font-family:'Unbounded', sans-serif;
+    font-size:clamp(2.5rem, 6vw, 5.5rem);
+    font-weight:700;
+    line-height:1.1;
+    margin-bottom:1.5rem;
+    opacity:0; transform:translateY(30px); transition:all 0.8s ease 0.4s;
+  }
+  .title-scene h1 span {
+    background: linear-gradient(90deg, #a3a3a3, #38bdf8, #fbbf24);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .title-scene p {
+    font-family:'Lora', serif;
+    font-size:clamp(1rem, 2vw, 1.3rem);
+    color:var(--text-soft);
+    font-style:italic;
+    max-width:35rem;
+    opacity:0; transform:translateY(20px); transition:all 0.8s ease 0.6s;
+  }
+
+  .scene.active .kicker, .scene.active h1, .scene.active p {
+    opacity:1; transform:translateY(0);
+  }
+
+  /* Сцены с контентом */
+  .content-scene {
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    max-width:1200px;
+    width:100%;
+    padding:4rem;
+    gap:4rem;
+    align-items:center;
+  }
+  @media(max-width:900px) {
+    .content-scene { grid-template-columns:1fr; padding:2rem; gap:2rem; text-align:center; }
+  }
+
+  .text-side { opacity:0; transform:translateX(-30px); transition:all 0.8s ease 0.2s; }
+  .visual-side { opacity:0; transform:translateX(30px); transition:all 0.8s ease 0.4s; }
+  .scene.active .text-side, .scene.active .visual-side { opacity:1; transform:translateX(0); }
+
+  .text-side h2 {
+    font-family:'Unbounded', sans-serif;
+    font-size:clamp(1.8rem, 3vw, 2.8rem);
+    margin-bottom:1.5rem;
+    line-height:1.2;
+  }
+  .text-side p {
+    font-family:'Lora', serif;
+    font-size:clamp(1rem, 1.5vw, 1.2rem);
+    color:var(--text-soft);
+    line-height:1.7;
+    margin-bottom:1rem;
+  }
+
+  /* ================= ИЛЛЮСТРАЦИИ (SVG) ================= */
+  .visual-side {
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+  }
+  .svg-art {
+    width:100%;
+    max-width:400px;
+    height:auto;
+    filter:drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+  }
+  
+  .pc-cheap .case { fill:#2a2a2a; stroke:#444; stroke-width:2; }
+  .pc-cheap .fan { fill:none; stroke:#555; stroke-width:3; stroke-dasharray:10 5; animation:spin 4s linear infinite; transform-origin:center; }
+  .pc-cheap .glow { fill:var(--cheap); opacity:0.2; filter:blur(10px); }
+  
+  .pc-mid .case { fill:#111; stroke:#38bdf8; stroke-width:2; }
+  .pc-mid .glass { fill:rgba(56,189,248,0.1); stroke:#38bdf8; stroke-width:1; }
+  .pc-mid .fan { fill:none; stroke:#38bdf8; stroke-width:3; animation:spin 2s linear infinite; transform-origin:center; }
+  .pc-mid .rgb { fill:var(--mid); filter:drop-shadow(0 0 10px var(--mid)); }
+  
+  .pc-rich .case { fill:#1a1508; stroke:#fbbf24; stroke-width:2; }
+  .pc-rich .glass { fill:rgba(251,191,36,0.1); stroke:#fbbf24; stroke-width:1; }
+  .pc-rich .coolant { fill:none; stroke:#fbbf24; stroke-width:4; stroke-dasharray:20 10; animation:flow 2s linear infinite; }
+  .pc-rich .rgb { fill:var(--rich); filter:drop-shadow(0 0 15px var(--rich)); animation:pulse 2s infinite; }
+
+  .laptop-base { fill:#222; stroke:#444; stroke-width:2; }
+  .laptop-screen { fill:#050505; stroke:#444; stroke-width:2; }
+  
+  .lap-cheap .screen-glow { fill:var(--cheap); opacity:0.1; }
+  .lap-mid .screen-glow { fill:var(--mid); opacity:0.2; filter:drop-shadow(0 0 20px var(--mid)); }
+  .lap-rich .screen-glow { fill:var(--rich); opacity:0.2; filter:drop-shadow(0 0 30px var(--rich)); }
+
+  @keyframes spin { 100% { transform:rotate(360deg); } }
+  @keyframes flow { 100% { stroke-dashoffset:-30; } }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* ================= СТЕКЛЯННЫЕ КАРТОЧКИ ================= */
+  .glass-card {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius:24px;
+    padding:2rem;
+    width:100%;
+    max-width:400px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.05);
+    position:relative;
+    overflow:hidden;
+  }
+  .glass-card::before {
+    content:''; position:absolute; inset:0;
+    background: radial-gradient(circle at top right, rgba(255,255,255,0.1), transparent 50%);
+    pointer-events:none;
+  }
+  
+  .glass-card.cheap { border-top: 1px solid var(--cheap); box-shadow: 0 10px 40px -10px var(--cheap-glow); }
+  .glass-card.mid { border-top: 1px solid var(--mid); box-shadow: 0 10px 40px -10px var(--mid-glow); }
+  .glass-card.rich { border-top: 1px solid var(--rich); box-shadow: 0 10px 40px -10px var(--rich-glow); }
+
+  .card-price { font-family:'Unbounded'; font-size:1.8rem; font-weight:700; margin-bottom:1.5rem; }
+  .glass-card.cheap .card-price { color:var(--cheap); }
+  .glass-card.mid .card-price { color:var(--mid); }
+  .glass-card.rich .card-price { color:var(--rich); }
+
+  .card-specs { list-style:none; margin-bottom:1.5rem; }
+  .card-specs li {
+    display:flex; justify-content:space-between;
+    padding:0.6rem 0; border-bottom:1px solid rgba(255,255,255,0.05);
+    font-size:0.9rem; color:var(--text-soft);
+  }
+  .card-specs li b { color:#fff; font-weight:500; }
+  
+  .card-bars { display:flex; flex-direction:column; gap:1rem; margin-top:1rem; }
+  .bar-row { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-soft); }
+  .bar-header { display:flex; justify-content:space-between; margin-bottom:0.4rem; }
+  .bar-bg { height:4px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden; }
+  .bar-fill { height:100%; width:0; border-radius:4px; transition:width 1.5s cubic-bezier(0.2,0.8,0.2,1); }
+  .glass-card.cheap .bar-fill { background:var(--cheap); }
+  .glass-card.mid .bar-fill { background:var(--mid); }
+  .glass-card.rich .bar-fill { background:var(--rich); }
+
+</style>
+</head>
+<body class="theme-cheap">
+
+<!-- Тонкий прогресс-бар сверху -->
+<div class="top-progress">
+  <div class="top-progress-fill" id="topProgress"></div>
+</div>
+
+<!-- Зоны кликов -->
+<div class="click-zones">
+  <div class="click-zone zone-left" id="zoneLeft"></div>
+  <div class="click-zone zone-center" id="zoneCenter"></div>
+  <div class="click-zone zone-right" id="zoneRight"></div>
+</div>
+
+<!-- Визуальный фидбек (Плей/Пауза) -->
+<div class="feedback" id="feedback">
+  <svg viewBox="0 0 24 24" id="feedbackIcon"><path d="M8 5v14l11-7z"/></svg>
+</div>
+
+<!-- ФОН -->
+<div class="bg-layer">
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+</div>
+
+<!-- ================= СЦЕНЫ ================= -->
+
+<!-- 1. ТИТУЛЬНАЯ -->
+<div class="scene title-scene active" data-duration="6000" data-theme="cheap">
+  <div class="kicker">Кинематографичная новелла</div>
+  <h1>Три <span>коробки</span></h1>
+  <p>История о том, как железо становится философией. С реальными ценами, магазинами и вердиктом.</p>
+</div>
+
+<!-- 2. ЧАСТЬ 1: ПК -->
+<div class="scene title-scene" data-duration="4000" data-theme="cheap">
+  <div class="kicker">Часть первая</div>
+  <h1 style="font-size:clamp(1.5rem, 4vw, 3rem);">Стационарные<br>компьютеры</h1>
+  <p>Три взгляда на жизнь за столом.</p>
+</div>
+
+<!-- ПК Дешёвый -->
+<div class="scene content-scene" data-duration="8000" data-theme="cheap">
+  <div class="text-side">
+    <h2 style="color:var(--cheap)">«Тихий омут»</h2>
+    <p>В комнате пахнет пылью и пригоревшим пластиком. Корпус собран из фанеры, покрашенной серой краской из баллончика.</p>
+    <p>Он не умеет запускать современные игры, но когда на нём пишут код — тихо шуршит, словно подпевает.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art pc-cheap" viewBox="0 0 200 200">
+      <circle class="glow" cx="100" cy="100" r="80" />
+      <rect class="case" x="50" y="40" width="100" height="120" rx="4" />
+      <rect x="60" y="50" width="80" height="60" rx="2" fill="#1a1a1a" />
+      <circle class="fan" cx="100" cy="80" r="20" />
+      <rect x="60" y="120" width="80" height="10" rx="2" fill="#333" />
+      <circle cx="70" cy="145" r="3" fill="#555" />
+      <circle cx="85" cy="145" r="3" fill="#555" />
+      <circle cx="100" cy="145" r="3" fill="#555" />
+      <rect x="70" y="155" width="60" height="2" fill="#444" />
+    </svg>
+  </div>
+</div>
+
+<!-- ПК Дешёвый Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="cheap">
+  <div class="glass-card cheap">
+    <div class="card-price">1 900–20 000 ₽</div>
+    <ul class="card-specs">
+      <li>Процессор <b>Intel Core i3-4130</b></li>
+      <li>Память <b>4 ГБ DDR3</b></li>
+      <li>Накопитель <b>HDD 500 ГБ</b></li>
+      <li>Состояние <b>«работает, если стукнуть»</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Скорость</span><span>18%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="18"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-header"><span>Надёжность</span><span>35%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="35"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ПК Средний -->
+<div class="scene content-scene" data-duration="8000" data-theme="mid">
+  <div class="text-side">
+    <h2 style="color:var(--mid)">«Золотая середина»</h2>
+    <p>Аккуратный чёрный корпус из комплектующих «не топ, но и не дно». Он не вызывает восторга, но и не раздражает.</p>
+    <p>Тянет «Фотошоп», запускает лёгкие игры, не греется и не шумит. Если нужно сдать проект — не подведёт.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art pc-mid" viewBox="0 0 200 200">
+      <rect class="case" x="40" y="30" width="120" height="140" rx="8" />
+      <rect class="glass" x="50" y="40" width="100" height="90" rx="4" />
+      <circle class="fan" cx="100" cy="85" r="25" />
+      <rect class="rgb" x="70" y="140" width="60" height="4" rx="2" />
+      <rect x="60" y="155" width="80" height="2" fill="#38bdf8" opacity="0.5" />
+    </svg>
+  </div>
+</div>
+
+<!-- ПК Средний Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="mid">
+  <div class="glass-card mid">
+    <div class="card-price">35 000–175 000 ₽</div>
+    <ul class="card-specs">
+      <li>Процессор <b>Ryzen 5 7600</b></li>
+      <li>Память <b>16 ГБ DDR5</b></li>
+      <li>Видеокарта <b>RTX 4060 8 ГБ</b></li>
+      <li>Состояние <b>«просто работает»</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Скорость</span><span>70%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="70"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-header"><span>Надёжность</span><span>85%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="85"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ПК Дорогой -->
+<div class="scene content-scene" data-duration="8000" data-theme="rich">
+  <div class="text-side">
+    <h2 style="color:var(--rich)">«Хрустальный дворец»</h2>
+    <p>Не машина, а произведение искусства. Корпус из закалённого стекла, подсветка, переливающаяся всеми цветами радуги.</p>
+    <p>В него играют на ультра-настройках. Но чем дольше играют, тем чаще ловят себя на мысли, что разницы с «Высокими» не видно.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art pc-rich" viewBox="0 0 200 200">
+      <rect class="case" x="35" y="25" width="130" height="150" rx="10" />
+      <rect class="glass" x="45" y="35" width="110" height="100" rx="6" />
+      <path class="coolant" d="M60,60 L140,60 L140,110 L60,110 Z" />
+      <circle cx="80" cy="80" r="10" fill="none" stroke="#fbbf24" stroke-width="2" />
+      <circle cx="120" cy="80" r="10" fill="none" stroke="#fbbf24" stroke-width="2" />
+      <circle cx="100" cy="100" r="15" fill="#fbbf24" opacity="0.5" />
+      <rect class="rgb" x="60" y="145" width="80" height="4" rx="2" />
+    </svg>
+  </div>
+</div>
+
+<!-- ПК Дорогой Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="rich">
+  <div class="glass-card rich">
+    <div class="card-price">320 000–847 000 ₽</div>
+    <ul class="card-specs">
+      <li>Процессор <b>Ryzen 9 7950X3D</b></li>
+      <li>Память <b>64 ГБ DDR5</b></li>
+      <li>Видеокарта <b>RTX 4090 24 ГБ</b></li>
+      <li>Состояние <b>«слишком идеально»</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Скорость</span><span>100%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="100"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-header"><span>Цена/Качество</span><span>30%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="30"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. ЧАСТЬ 2: НОУТБУКИ -->
+<div class="scene title-scene" data-duration="4000" data-theme="mid">
+  <div class="kicker">Часть вторая</div>
+  <h1 style="font-size:clamp(1.5rem, 4vw, 3rem);">Ноутбуки</h1>
+  <p>Три способа носить свою жизнь в рюкзаке.</p>
+</div>
+
+<!-- Ноут Дешёвый -->
+<div class="scene content-scene" data-duration="8000" data-theme="cheap">
+  <div class="text-side">
+    <h2 style="color:var(--cheap)">«Пластиковый выживший»</h2>
+    <p>Он покрыт мелкими царапинами, как карта неизведанных территорий. Петли уже не держат угол так жёстко, но он работает.</p>
+    <p>Его купили за копейки на комиссионке. Он не умеет в современные игры, но на нём можно писать текст и смотреть видео.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art lap-cheap" viewBox="0 0 200 200">
+      <path class="laptop-screen" d="M40,50 L160,50 L160,130 L40,130 Z" />
+      <rect class="screen-glow" x="45" y="55" width="110" height="70" />
+      <path class="laptop-base" d="M30,130 L170,130 L180,160 L20,160 Z" />
+      <rect x="80" y="145" width="40" height="4" rx="2" fill="#333" />
+    </svg>
+  </div>
+</div>
+
+<!-- Ноут Дешёвый Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="cheap">
+  <div class="glass-card cheap">
+    <div class="card-price">16 900–20 100 ₽</div>
+    <ul class="card-specs">
+      <li>Экран <b>15.6" IPS FHD</b></li>
+      <li>Процессор <b>i3-10110U</b></li>
+      <li>Память <b>8 ГБ DDR4</b></li>
+      <li>Вес <b>~1.7 кг</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Цена/Качество</span><span>90%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="90"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ноут Средний -->
+<div class="scene content-scene" data-duration="8000" data-theme="mid">
+  <div class="text-side">
+    <h2 style="color:var(--mid)">«Рабочая лошадка»</h2>
+    <p>Уже не стыдно достать в коворкинге. Матовый корпус, нормальная клавиатура, экран, на который не больно смотреть.</p>
+    <p>Можно смонтировать видео для соцсетей, запустить «Фотошоп» без ужаса, поиграть во что-то в Full HD.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art lap-mid" viewBox="0 0 200 200">
+      <path class="laptop-screen" d="M40,45 L160,45 L160,125 L40,125 Z" />
+      <rect class="screen-glow" x="45" y="50" width="110" height="70" />
+      <path class="laptop-base" d="M30,125 L170,125 L180,155 L20,155 Z" />
+      <rect x="80" y="140" width="40" height="4" rx="2" fill="#38bdf8" />
+    </svg>
+  </div>
+</div>
+
+<!-- Ноут Средний Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="mid">
+  <div class="glass-card mid">
+    <div class="card-price">104 000–139 200 ₽</div>
+    <ul class="card-specs">
+      <li>Экран <b>15.6" IPS 144 Гц</b></li>
+      <li>Процессор <b>i5-13420H</b></li>
+      <li>Видеокарта <b>RTX 4050 / 5050</b></li>
+      <li>Вес <b>~2.1 кг</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Скорость</span><span>65%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="65"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-header"><span>Автономность</span><span>55%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="55"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Ноут Дорогой -->
+<div class="scene content-scene" data-duration="8000" data-theme="rich">
+  <div class="text-side">
+    <h2 style="color:var(--rich)">«Тяжёлый слиток»</h2>
+    <p>К нему страшно прикоснуться. Корпус из металла, идеально отшлифованные грани, экран, который переливается.</p>
+    <p>Тянет 4K-рендер и игры на ультра-настройках. Но батарея живёт мало, а вес ощущается в рюкзаке.</p>
+  </div>
+  <div class="visual-side">
+    <svg class="svg-art lap-rich" viewBox="0 0 200 200">
+      <path class="laptop-screen" d="M35,40 L165,40 L165,120 L35,120 Z" />
+      <rect class="screen-glow" x="40" y="45" width="120" height="70" />
+      <path class="laptop-base" d="M25,120 L175,120 L185,150 L15,150 Z" />
+      <rect x="70" y="135" width="60" height="4" rx="2" fill="#fbbf24" />
+      <path d="M50,140 L60,145 M150,140 L140,145" stroke="#fbbf24" stroke-width="2" />
+    </svg>
+  </div>
+</div>
+
+<!-- Ноут Дорогой Карточка -->
+<div class="scene title-scene" data-duration="8000" data-theme="rich">
+  <div class="glass-card rich">
+    <div class="card-price">283 000–734 000 ₽</div>
+    <ul class="card-specs">
+      <li>Экран <b>16" OLED 240 Гц</b></li>
+      <li>Процессор <b>Ultra 9 290HX</b></li>
+      <li>Видеокарта <b>RTX 5080 / 5090</b></li>
+      <li>Вес <b>~2.7 кг</b></li>
+    </ul>
+    <div class="card-bars">
+      <div class="bar-row">
+        <div class="bar-header"><span>Скорость</span><span>100%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="100"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-header"><span>Портативность</span><span>20%</span></div>
+        <div class="bar-bg"><div class="bar-fill" data-w="20"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ФИНАЛ -->
+<div class="scene title-scene" data-duration="8000" data-theme="mid">
+  <div class="kicker">Финал</div>
+  <h1 style="font-size:clamp(1.8rem, 4vw, 3rem);">Счастье не в подсветке.</h1>
+  <p style="margin-top:1rem;">Дешёвый учит выживать, средний — работать, а дорогой — понимать, что главное — это человек за машиной.</p>
+</div>
+
+<script>
+  const scenes = document.querySelectorAll('.scene');
+  const topProgress = document.getElementById('topProgress');
+  const zoneLeft = document.getElementById('zoneLeft');
+  const zoneCenter = document.getElementById('zoneCenter');
+  const zoneRight = document.getElementById('zoneRight');
+  const feedback = document.getElementById('feedback');
+  const feedbackIcon = document.getElementById('feedbackIcon');
+
+  let current = 0;
+  let playing = true; // Автозапуск
+  let timer = null;
+  let startTime = 0;
+  let elapsed = 0;
+  let rafId = null;
+
+  // Переключение сцены
+  function goToScene(index) {
+    if (index < 0) index = 0;
+    if (index >= scenes.length) index = scenes.length - 1;
+    
+    scenes[current].classList.remove('active');
+    scenes[current].style.transform = 'scale(0.95)';
+    
+    const theme = scenes[index].dataset.theme || 'cheap';
+    document.body.className = 'theme-' + theme;
+    
+    current = index;
+    const activeScene = scenes[current];
+    activeScene.classList.add('active');
+    activeScene.style.transform = 'scale(1)';
+
+    const fills = activeScene.querySelectorAll('.bar-fill');
+    fills.forEach(f => {
+      f.style.width = '0';
+      setTimeout(() => { f.style.width = f.dataset.w + '%'; }, 300);
+    });
+
+    elapsed = 0;
+    if (playing) startTimer();
+  }
+
+  function getDuration() {
+    return parseInt(scenes[current].dataset.duration || 6000, 10);
+  }
+
+  function startTimer() {
+    cancelAnimationFrame(rafId);
+    clearTimeout(timer);
+    const duration = getDuration();
+    startTime = performance.now() - elapsed;
+
+    timer = setTimeout(() => {
+      if (current < scenes.length - 1) {
+        goToScene(current + 1);
+        if (playing) startTimer();
+      } else {
+        playing = false;
+        topProgress.style.width = '100%';
+      }
+    }, duration - elapsed);
+
+    animateProgress();
+  }
+
+  function animateProgress() {
+    function loop() {
+      if (!playing) return;
+      const duration = getDuration();
+      const now = performance.now() - startTime;
+      const pct = Math.min(100, (now / duration) * 100);
+      topProgress.style.width = pct + '%';
+      if (pct < 100) rafId = requestAnimationFrame(loop);
+    }
+    loop();
+  }
+
+  function play() {
+    if (current >= scenes.length - 1 && elapsed > 0) {
+      goToScene(0);
+    }
+    playing = true;
+    startTimer();
+  }
+
+  function pause() {
+    playing = false;
+    clearTimeout(timer);
+    cancelAnimationFrame(rafId);
+    elapsed = performance.now() - startTime;
+    topProgress.style.width = '0';
+  }
+
+  function togglePlay(e) {
+    if (playing) {
+      pause();
+      showFeedback('<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'); // Пауза
+    } else {
+      play();
+      showFeedback('<path d="M8 5v14l11-7z"/>'); // Плей
+    }
+  }
+
+  function showFeedback(svgPath) {
+    feedbackIcon.innerHTML = svgPath;
+    feedback.classList.add('show');
+    setTimeout(() => feedback.classList.remove('show'), 800);
+  }
+
+  // Управление кликами по зонам
+  zoneLeft.addEventListener('click', () => goToScene(current - 1));
+  zoneCenter.addEventListener('click', togglePlay);
+  zoneRight.addEventListener('click', () => goToScene(current + 1));
+
+  // Управление с клавиатуры
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+    if (e.code === 'ArrowRight') goToScene(current + 1);
+    if (e.code === 'ArrowLeft') goToScene(current - 1);
+  });
+
+  // Свайпы для мобилок
+  let touchStartX = 0;
+  let touchStartY = 0;
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, {passive:true});
+
+  document.addEventListener('touchend', (e) => {
+    let touchEndX = e.changedTouches[0].screenX;
+    let touchEndY = e.changedTouches[0].screenY;
+    
+    // Если свайп горизонтальный и достаточно длинный
+    if (Math.abs(touchEndX - touchStartX) > 50 && Math.abs(touchEndX - touchStartX) > Math.abs(touchEndY - touchStartY)) {
+      if (touchEndX < touchStartX) goToScene(current + 1); // Свайп влево
+      else goToScene(current - 1); // Свайп вправо
+    } else if (Math.abs(touchEndX - touchStartX) < 10 && Math.abs(touchEndY - touchStartY) < 10) {
+      // Это был тап. Зоны кликов уже обработали его.
+    }
+  }, {passive:true});
+
+  // Инициализация
+  setTimeout(() => play(), 500);
+</script>
+
+</body>
+</html>
